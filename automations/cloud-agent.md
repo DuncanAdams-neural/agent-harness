@@ -31,3 +31,4 @@ URL, tests, rollback ID, or any failed gate means stop before production.
 - **Production promotion:** prefer an explicit on-demand run with Cloudflare credentials scoped to the target Worker.
 
 Do not give a daily review automation production credentials.
+
