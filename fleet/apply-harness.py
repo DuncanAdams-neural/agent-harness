@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Apply the canonical harness bundle without overwriting project-owned config."""
+"""Apply a canonical harness checkout without overwriting project-owned config."""
 
 import argparse
-import base64
 import json
 import shutil
-import tarfile
-import tempfile
 from pathlib import Path
 
 
@@ -35,20 +32,44 @@ PORTABLE_SKILLS = (
 )
 POINTER_START = "<!-- agent-harness:start -->"
 POINTER_END = "<!-- agent-harness:end -->"
+REQUIRED_SOURCES = (
+    "AGENTS.md",
+    "README.md",
+    "harness.config.example.sh",
+    "skills-lock.json",
+    "skills-local-lock.json",
+    ".cursor/rules/agent-harness.mdc",
+    ".cursor/hooks.json",
+    ".cursor/hooks/markitdown-before-submit.py",
+    ".github/workflows/pre-deploy.yml",
+    "docs/forge-workflow.md",
+    "input/first-review.md",
+)
 
 
-def safe_extract(archive: Path, destination: Path) -> None:
-    with tarfile.open(archive, "r:gz") as bundle:
-        root = destination.resolve()
-        for member in bundle.getmembers():
-            resolved = (destination / member.name).resolve()
-            if root not in resolved.parents and resolved != root:
-                raise ValueError(f"unsafe bundle path: {member.name}")
-            if member.issym() or member.islnk():
-                raise ValueError(f"bundle links are not allowed: {member.name}")
-            if not member.isdir() and not member.isfile():
-                raise ValueError(f"unsupported bundle entry: {member.name}")
-        bundle.extractall(destination)
+def verify_source(source: Path) -> None:
+    """Fail closed when the canonical checkout is incomplete or truncated."""
+    missing = [name for name in REQUIRED_SOURCES if not (source / name).is_file()]
+    for skill in HARNESS_SKILLS:
+        if not (source / ".cursor" / "skills" / skill / "SKILL.md").is_file():
+            missing.append(f".cursor/skills/{skill}/SKILL.md")
+    for skill in PORTABLE_SKILLS:
+        if not (source / ".agents" / "skills" / skill / "SKILL.md").is_file():
+            missing.append(f".agents/skills/{skill}/SKILL.md")
+    for script in ("bash-guard-check.sh", "pre-deploy-gate.sh", "optimizer-gate.sh"):
+        if not (source / "bin" / script).is_file():
+            missing.append(f"bin/{script}")
+    if missing:
+        raise FileNotFoundError(
+            "canonical harness checkout is incomplete: " + ", ".join(sorted(missing))
+        )
+
+    skill_files = list((source / ".cursor" / "skills").glob("*/SKILL.md"))
+    skill_files.extend((source / ".agents" / "skills").glob("*/SKILL.md"))
+    for skill_file in skill_files:
+        text = skill_file.read_text(encoding="utf-8")
+        if not text.startswith("---") or "\nname:" not in text:
+            raise ValueError(f"canonical skill looks truncated: {skill_file}")
 
 
 def copy_file(source: Path, destination: Path, overwrite: bool = True) -> None:
@@ -283,22 +304,18 @@ def apply(bundle_root: Path, target: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bundle", required=True, type=Path)
+    parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--target", required=True, type=Path)
     arguments = parser.parse_args()
 
+    source = arguments.source.resolve()
     target = arguments.target.resolve()
-    with tempfile.TemporaryDirectory() as temporary:
-        temporary_root = Path(temporary)
-        archive = temporary_root / "harness.tar.gz"
-        archive.write_bytes(base64.b64decode(arguments.bundle.read_bytes()))
-        extracted = temporary_root / "bundle"
-        extracted.mkdir()
-        safe_extract(archive, extracted)
-        apply(extracted, target)
+    if source == target:
+        raise ValueError("source and target must differ")
+    verify_source(source)
+    apply(source, target)
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
