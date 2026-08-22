@@ -33,30 +33,22 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Download canonical harness
+      - name: Fetch canonical harness at pinned commit
         env:
-          CANONICAL_REF: "__CANONICAL_REF__"
-          APPLY_SHA256: "__APPLY_SHA256__"
-          MANIFEST_SHA256: "__MANIFEST_SHA256__"
+          CANONICAL_SHA: "__CANONICAL_SHA__"
         run: |
-          curl --fail --silent --show-error --location \
-            "https://raw.githubusercontent.com/DuncanAdams-neural/agent-harness/$CANONICAL_REF/fleet/apply-harness.py" \
-            --output "$RUNNER_TEMP/apply-harness.py"
-          curl --fail --silent --show-error --location \
-            "https://raw.githubusercontent.com/DuncanAdams-neural/agent-harness/$CANONICAL_REF/distribution/manifest.json" \
-            --output "$RUNNER_TEMP/manifest.json"
-          printf '%s  %s\n' "$APPLY_SHA256" "$RUNNER_TEMP/apply-harness.py" | sha256sum --check
-          printf '%s  %s\n' "$MANIFEST_SHA256" "$RUNNER_TEMP/manifest.json" | sha256sum --check
-          : > "$RUNNER_TEMP/agent-harness.tar.gz.b64"
-          python -c 'import json,sys; print(*json.load(open(sys.argv[1]))["chunks"], sep="\n")' \
-            "$RUNNER_TEMP/manifest.json" |
-          while IFS= read -r chunk; do
-            curl --fail --silent --show-error --location \
-              "https://raw.githubusercontent.com/DuncanAdams-neural/agent-harness/$CANONICAL_REF/distribution/$chunk" \
-              >> "$RUNNER_TEMP/agent-harness.tar.gz.b64"
-          done
-          encoded_sha="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["encoded_sha256"])' "$RUNNER_TEMP/manifest.json")"
-          printf '%s  %s\n' "$encoded_sha" "$RUNNER_TEMP/agent-harness.tar.gz.b64" | sha256sum --check
+          canonical="$RUNNER_TEMP/canonical"
+          git init --quiet "$canonical"
+          git -C "$canonical" remote add origin \
+            https://github.com/DuncanAdams-neural/agent-harness.git
+          git -C "$canonical" fetch --quiet --depth 1 origin "$CANONICAL_SHA"
+          git -C "$canonical" checkout --quiet FETCH_HEAD
+          actual="$(git -C "$canonical" rev-parse HEAD)"
+          if [[ "$actual" != "$CANONICAL_SHA" ]]; then
+            echo "Canonical commit mismatch: $actual != $CANONICAL_SHA" >&2
+            exit 1
+          fi
+          bash "$canonical/bin/harness-health.sh"
 
       - name: Apply harness on sync branch
         env:
@@ -72,8 +64,8 @@ jobs:
           else
             git switch -c "$branch"
           fi
-          python "$RUNNER_TEMP/apply-harness.py" \
-            --bundle "$RUNNER_TEMP/agent-harness.tar.gz.b64" \
+          python "$RUNNER_TEMP/canonical/fleet/apply-harness.py" \
+            --source "$RUNNER_TEMP/canonical" \
             --target .
           git add .
           if git diff --cached --quiet; then
