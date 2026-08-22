@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "skills": {
+    "code-review": "0bfedb613be3dbe2eb7b372c420423c8f29356745550e77dd845266cd46b7d12",
+    "codebase-design": "826e65f8d718794b0647dd50122d3c388c6e860c608d6aa313d7d716ff535933",
+    "diagnosing-bugs": "edae2981c44d94a39401ab799b5a25221500e9539b03e839f9e30cc03326e638",
+    "domain-modeling": "2cc88b237a4704f9fe2057492024856a48ea803a5b9257b1c1e3174eb1f13a09",
+    "fallow": "e614aefb23526c5fcce61e1cd1b95ee85328600cccf437a8ad0ce41d848398c5",
+    "grilling": "da8816b5b0ce68e2bce53029ba0b8fd9f5e93b07fca09c63f577ec8d086f194c",
+    "ponytail": "f183c63c5f5bf79a26543e48199dabb6a61cb08ba44926c8f8889bcdf8a8efc4",
+    "ponytail-review": "5cf83f59ccd7c0de02971a5a0a7660405c38cd27c7a5bda1f352ded8c445c4b4",
+    "research": "8a9ab1886c0bd5f7d0e8c8f8d0222de307bec5368a2ab15f9b418d7e7a830e16",
+    "resolving-merge-conflicts": "29c2e58b5192a7e8f268b983c147953b1f981126ae58568303fe395bbac27ced",
+    "writing-for-agents": "dc53f07d1f662137317789b9b5d74cfcc26dbcfc15038a7faf676c844d8638e8"
+  }
+}
