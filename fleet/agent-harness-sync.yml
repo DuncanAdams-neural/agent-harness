@@ -1,0 +1,113 @@
+name: Agent harness sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - .github/workflows/agent-harness-sync.yml
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: agent-harness-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download canonical harness
+        env:
+          CANONICAL_REF: "__CANONICAL_REF__"
+          APPLY_SHA256: "__APPLY_SHA256__"
+          MANIFEST_SHA256: "__MANIFEST_SHA256__"
+        run: |
+          curl --fail --silent --show-error --location \
+            "https://raw.githubusercontent.com/DuncanAdams-neural/agent-harness/$CANONICAL_REF/fleet/apply-harness.py" \
+            --output "$RUNNER_TEMP/apply-harness.py"
+          curl --fail --silent --show-error --location \
+            "https://raw.githubusercontent.com/DuncanAdams-neural/agent-harness/$CANONICAL_REF/distribution/manifest.json" \
+            --output "$RUNNER_TEMP/manifest.json"
+          printf '%s  %s\n' "$APPLY_SHA256" "$RUNNER_TEMP/apply-harness.py" | sha256sum --check
+          printf '%s  %s\n' "$MANIFEST_SHA256" "$RUNNER_TEMP/manifest.json" | sha256sum --check
+          : > "$RUNNER_TEMP/agent-harness.tar.gz.b64"
+          python -c 'import json,sys; print(*json.load(open(sys.argv[1]))["chunks"], sep="\n")' \
+            "$RUNNER_TEMP/manifest.json" |
+          while IFS= read -r chunk; do
+            curl --fail --silent --show-error --location \
+              "https://raw.githubusercontent.com/DuncanAdams-neural/agent-harness/$CANONICAL_REF/distribution/$chunk" \
+              >> "$RUNNER_TEMP/agent-harness.tar.gz.b64"
+          done
+          encoded_sha="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["encoded_sha256"])' "$RUNNER_TEMP/manifest.json")"
+          printf '%s  %s\n' "$encoded_sha" "$RUNNER_TEMP/agent-harness.tar.gz.b64" | sha256sum --check
+
+      - name: Apply harness on sync branch
+        env:
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          branch="chore/agent-harness-sync"
+          git config user.name "agent-harness[bot]"
+          git config user.email "agent-harness[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            git switch -C "$branch" "origin/$branch"
+            git merge --no-edit "origin/$BASE_BRANCH"
+          else
+            git switch -c "$branch"
+          fi
+          python "$RUNNER_TEMP/apply-harness.py" \
+            --bundle "$RUNNER_TEMP/agent-harness.tar.gz.b64" \
+            --target .
+          git add .
+          if git diff --cached --quiet; then
+            echo "No harness update required."
+            exit 0
+          fi
+          git commit -m "chore: sync agent harness"
+          git push --set-upstream origin "$branch"
+
+      - name: Open update pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          branch="chore/agent-harness-sync"
+          gh label create harness-maintenance \
+            --color 5319e7 \
+            --description "Reviewed changes to agent harness controls" \
+            --force
+          open_pr="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+          closed_pr="$(gh pr list --head "$branch" --state closed --json number,state --jq 'map(select(.state == "CLOSED"))[0].number // empty')"
+          if [[ -n "$open_pr" ]]; then
+            gh pr edit "$open_pr" --add-label harness-maintenance
+            echo "Existing harness pull request updated: #$open_pr"
+          elif [[ -n "$closed_pr" ]]; then
+            gh pr reopen "$closed_pr"
+            gh pr edit "$closed_pr" --add-label harness-maintenance
+            echo "Harness pull request reopened: #$closed_pr"
+          else
+            url="$(gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$branch" \
+              --title "chore: install agent harness foundation" \
+              --body "Installs or updates the shared review, test, optimization, handoff, and guarded deployment harness. Review every command in \`harness.config.sh\`, install exact \`fallow@3.17.0\` for JS/TS repos, and set \`HARNESS_CONFIGURED=1\` only after verification.")"
+            gh pr edit "$url" --add-label harness-maintenance
+          fi
+
