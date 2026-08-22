@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": ".cursor/hooks/markitdown-before-submit.py",
+        "type": "command",
+        "timeout": 120,
+        "failClosed": true,
+        "matcher": "UserPromptSubmit"
+      }
+    ]
+  }
+}

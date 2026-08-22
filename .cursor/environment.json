@@ -1,0 +1,4 @@
+{
+  "name": "Agent harness with MarkItDown",
+  "install": "python3 -m pip install 'markitdown[all]==0.1.7'"
+}
