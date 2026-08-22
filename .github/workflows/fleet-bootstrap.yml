@@ -1,0 +1,25 @@
+name: Bootstrap agent harness fleet
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install or refresh repository sync workflows
+        env:
+          FLEET_TOKEN: ${{ secrets.FLEET_TOKEN }}
+        run: python3 fleet/bootstrap-repositories.py
+

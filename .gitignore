@@ -9,3 +9,4 @@ node_modules/
 .cursor/artifacts/
 __pycache__/
 *.pyc
+

@@ -1,0 +1,37 @@
+name: Agent harness gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pre-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.20.0"
+
+      - name: Install gate dependency
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Install project dependencies
+        run: |
+          source harness.config.sh
+          if [[ -n "${HARNESS_INSTALL_CMD:-}" ]]; then
+            bash -o pipefail -c "$HARNESS_INSTALL_CMD"
+          fi
+
+      - name: Run repository gate
+        env:
+          HARNESS_CI: "1"
+          HARNESS_ALLOW_GUARD_CHANGES: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'harness-maintenance') && '1' || '0' }}
+        run: bash bin/pre-deploy-gate.sh repo
+
