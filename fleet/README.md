@@ -7,9 +7,11 @@ repository. This fleet uses two workflows:
    `DuncanAdams-neural/agent-harness`. It inventories repositories owned by
    `DuncanAdams-neural` and `NeuralIdentity` and adds or updates the small
    `agent-harness-sync.yml` workflow.
-2. Each repository's sync workflow downloads the canonical bundle, merges it
-   without overwriting project-owned `AGENTS.md`, Cursor environment, or
-   `harness.config.sh`, and opens/updates a reviewable PR.
+2. Each repository's sync workflow shallow-clones this public repository at a
+   pinned commit SHA, verifies the checkout with the canonical
+   `bin/harness-health.sh`, merges it without overwriting project-owned
+   `AGENTS.md`, Cursor environment, or `harness.config.sh`, and opens or
+   updates a reviewable PR.
 
 ## Required secret
 
@@ -32,12 +34,14 @@ pushing the sync branch.
 
 ## Update procedure
 
-1. Change and verify the canonical harness.
-2. Run `python3 fleet/build-bundle.py`.
-3. Commit the changed manifest and chunk files under `distribution/`.
-4. Run the central workflow manually or wait for the hourly schedule.
+1. Change and verify the canonical harness, then push it to `main`.
+2. Update `__CANONICAL_SHA__` in `fleet/agent-harness-sync.yml` to the new
+   commit SHA and push that change.
+3. Run the central workflow manually or wait for the hourly schedule.
 
-Never hand-edit the manifest or base64 chunks.
+Targets always fetch an immutable commit, never a moving branch. A truncated or
+incomplete canonical checkout fails the health check and aborts the sync before
+any target file is written.
 
 Canonical-owned paths (harness skills, gates, locks, docs, and workflows) are
 updated on each sync. Product-owned `AGENTS.md`, `.cursor/environment.json`,
