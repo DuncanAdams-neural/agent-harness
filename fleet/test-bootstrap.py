@@ -107,6 +107,7 @@ def repository(
     full_name: str,
     *,
     push: bool = True,
+    pull: bool = True,
     archived: bool = False,
     fork: bool = False,
 ) -> dict[str, Any]:
@@ -115,7 +116,7 @@ def repository(
         "default_branch": "main",
         "archived": archived,
         "fork": fork,
-        "permissions": {"push": push},
+        "permissions": {"pull": pull, "push": push},
     }
 
 
@@ -219,13 +220,17 @@ def test_permission_skips_stay_green(module: Any) -> None:
 
 
 def test_installation_token_listing_fallback(module: Any) -> None:
+    """An app installation token lists repositories and reports no permissions."""
+
     class InstallationOnly(FakeGitHub):
         def route(self, method: str, path: str, payload: dict[str, Any] | None) -> Any:
             if path.startswith("/user/repos"):
                 raise module.ApiError(403, "resource not accessible by integration")
             return super().route(method, path, payload)
 
-    api = InstallationOnly(module, [repository("DuncanAdams-neural/app-repo")])
+    api = InstallationOnly(
+        module, [repository("DuncanAdams-neural/app-repo", push=False, pull=False)]
+    )
     api.refs[("DuncanAdams-neural/app-repo", "main")] = "base-sha"
     module.request = api
     code, output, _ = run_main(

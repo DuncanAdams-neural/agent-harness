@@ -155,7 +155,11 @@ def install_workflow(token: str, repository: dict[str, Any], workflow: str) -> s
         return "skip owner"
     if repository.get("archived") or repository.get("disabled") or repository.get("fork"):
         return "skip inactive"
-    if not repository.get("permissions", {}).get("push"):
+    # App installation tokens report every permission as false, including the
+    # `pull` that listing the repository already proves. Trust the block only
+    # when it claims read access, and otherwise let the API's own 403 decide.
+    permissions = repository.get("permissions", {})
+    if permissions.get("pull") and not permissions.get("push"):
         return "skip no-push"
 
     encoded_path = urllib.parse.quote(WORKFLOW_PATH, safe="/")
