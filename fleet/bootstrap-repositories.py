@@ -4,7 +4,6 @@
 import base64
 import json
 import os
-import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -167,11 +166,17 @@ def main() -> int:
     token = os.environ.get("FLEET_TOKEN", "")
     if not token:
         print(
-            "FLEET_TOKEN is required: grant Contents and Pull requests write "
-            "access to both configured owners.",
-            file=sys.stderr,
+            "::warning title=Fleet bootstrap disabled::FLEET_TOKEN is not "
+            "configured; no repositories were changed."
         )
-        return 1
+        if summary_path := os.environ.get("GITHUB_STEP_SUMMARY"):
+            Path(summary_path).write_text(
+                "## Fleet bootstrap skipped\n"
+                "Configure the repository secret `FLEET_TOKEN` to enable "
+                "cross-repository sync.\n",
+                encoding="utf-8",
+            )
+        return 0
 
     workflow_path = Path(__file__).with_name("agent-harness-sync.yml")
     workflow = workflow_path.read_text(encoding="utf-8")

@@ -6,7 +6,7 @@ HARNESS_SOURCE_DIRS="src|app|lib|workers"
 HARNESS_INSTALL_CMD=""
 HARNESS_TYPECHECK_CMD=""
 HARNESS_LINT_CMD=""
-HARNESS_TEST_CMD="bash bin/harness-health.sh && bash bin/test-guards.sh && python3 bin/test-upload-hook.py && python3 bin/test-optimizer-gate.py"
+HARNESS_TEST_CMD="python3 fleet/test-bootstrap.py && bash bin/harness-health.sh && bash bin/test-guards.sh && python3 bin/test-upload-hook.py && python3 bin/test-optimizer-gate.py"
 HARNESS_BUILD_CMD=""
 HARNESS_FALLOW_CMD="npx --no-install fallow audit --format json --quiet"
 
