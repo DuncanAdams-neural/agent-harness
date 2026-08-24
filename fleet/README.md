@@ -24,6 +24,10 @@ Use a fine-grained token or GitHub App installation token with:
 - Workflows: read and write (required for `.github/workflows/*`);
 - Metadata: read.
 
+Until the secret is configured, the hourly bootstrap exits successfully with a
+warning and changes no repositories. Adding the secret enables the next run
+without another code change.
+
 The central token opens bootstrap PRs containing only the sync workflow; it
 does not write directly to default branches. Each target workflow uses its own
 short-lived `GITHUB_TOKEN` to create the harness branch and PR.

@@ -1,15 +1,15 @@
 # Agent Handoff
 
 - **Phase:** pre-deploy
-- **Goal:** Distribute the agent harness to all GitHub repositories and future repositories.
-- **Completed:** Added deterministic bundle construction, non-destructive target merge/config generation, per-repo sync workflow, hourly fleet bootstrap, offline tests, and operator documentation.
-- **Stopped at:** Distributor implementation complete; local verification and GitHub publication/rollout have not run.
-- **Next action:** Commit and test the distributor, publish the canonical GitHub repo, install sync workflows across eligible repositories, and record rollout evidence.
-- **Blockers:** None.
-- **Files touched:** `AGENTS.md`, `.cursor/`, `bin/`, `.github/`, `automations/`, `docs/`, `input/`, `README.md`, config and ignore files.
-- **Branch:** `cursor/agent-harness-690a`
-- **Commit:** `56b0c1d` (fleet distributor is currently uncommitted).
-- **Last gate:** Previous optimizer/harness gate passed at `56b0c1d`; fleet distributor not yet verified.
+- **Goal:** Stop recurring fleet bootstrap failures while preserving automatic cross-repository sync.
+- **Completed:** Missing `FLEET_TOKEN` now produces a successful warning/no-op; adding the secret automatically enables later runs. Bootstrap actions now use Node 24-compatible releases.
+- **Stopped at:** Implementation complete; verification pending.
+- **Next action:** Run the repository gate, review the pull request, then configure `FLEET_TOKEN` to activate fleet sync.
+- **Blockers:** Cross-repository changes remain disabled until a maintainer configures the documented repository secret.
+- **Files touched:** `.github/workflows/fleet-bootstrap.yml`, `fleet/README.md`, `docs/handoff.md`.
+- **Branch:** `cursor/fix-bootstrap-credentials-a1c0`
+- **Commit:** Pending.
+- **Last gate:** Pending for this branch.
 - **New Worker version:** None.
 - **Stable Worker version:** None.
 - **Rollback Worker version:** None.
