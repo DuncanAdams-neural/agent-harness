@@ -32,16 +32,43 @@ Organization/repository settings must allow GitHub Actions to create pull
 requests. If policy blocks PR creation, the target workflow fails visibly after
 pushing the sync branch.
 
+## Bootstrap run outcomes
+
+Until `FLEET_TOKEN` exists the hourly bootstrap has nothing to distribute, so it
+records a warning annotation plus a job summary and succeeds. That keeps the
+schedule usable as a signal instead of a permanent red mark.
+
+Once the secret exists:
+
+- every repository in the inventory is attempted, and one failing repository no
+  longer aborts the rest of the fleet;
+- per-repository permission (`403`), empty-repository (`409`), and policy
+  rejection (`422`) answers are reported as `::warning` skips and summarized;
+- a token that cannot inventory the fleet at all, an unresolvable canonical
+  commit, and any unclassified API failure fail the run;
+- rate limits and `5xx` answers are retried with backoff before they count.
+
+Read the counts and any failure list in the run's job summary.
+
 ## Update procedure
 
 1. Change and verify the canonical harness, then push it to `main`.
-2. Update `__CANONICAL_SHA__` in `fleet/agent-harness-sync.yml` to the new
-   commit SHA and push that change.
-3. Run the central workflow manually or wait for the hourly schedule.
+2. Run the central workflow manually or wait for the hourly schedule.
+
+The bootstrap replaces `__CANONICAL_SHA__` in `fleet/agent-harness-sync.yml`
+with the canonical commit it ran from (`GITHUB_SHA`), so no one hand-edits the
+pin. Targets receive an update PR whenever that commit advances.
 
 Targets always fetch an immutable commit, never a moving branch. A truncated or
 incomplete canonical checkout fails the health check and aborts the sync before
 any target file is written.
+
+## Offline checks
+
+- `python3 fleet/test-bootstrap.py` — token gating, canonical-SHA pinning,
+  eligibility rules, and per-repository failure isolation.
+- `python3 fleet/test-fleet.py` — canonical checkout application and
+  target-file safety.
 
 Canonical-owned paths (harness skills, gates, locks, docs, and workflows) are
 updated on each sync. Product-owned `AGENTS.md`, `.cursor/environment.json`,
