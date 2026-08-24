@@ -21,12 +21,5 @@ jobs:
       - name: Install or refresh repository sync workflows
         env:
           FLEET_TOKEN: ${{ secrets.FLEET_TOKEN }}
-        run: |
-          if [[ -z "$FLEET_TOKEN" ]]; then
-            echo "::warning title=Fleet bootstrap disabled::FLEET_TOKEN is not configured; no repositories were changed."
-            echo "## Fleet bootstrap skipped" >> "$GITHUB_STEP_SUMMARY"
-            echo "Configure the repository secret \`FLEET_TOKEN\` to enable cross-repository sync." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          python3 fleet/bootstrap-repositories.py
+        run: python3 fleet/bootstrap-repositories.py
 
