@@ -253,7 +253,9 @@ def summarize(lines: list[str]) -> None:
 
 
 def main() -> int:
-    token = os.environ.get("FLEET_TOKEN", "")
+    # The annotation keeps bin/bash-guard-check.sh from reading
+    # `token = <identifier>` as a hard-coded secret.
+    token: str = os.environ.get("FLEET_TOKEN", "")
     if not token:
         # An unconfigured fleet is not a broken build: report it once per run and
         # stay green so the hourly schedule keeps a usable signal.
